@@ -1,0 +1,119 @@
+\section{Einleitung}
+Bei der Lösung von Optimale Steurungs Problemen (OCP) mit SQP-Verfahren tauchen quadratische Programme (QP)  mit einer typischen Struktur auf. Durch die Ausnutzung dieser Struktur lässt sich die Geschwindigkeit der Verfahren stark erhöhen. Dabei wird das ursprüngliche dünnbesetzte QP in ein dichtbesetztes QP mit kleinerer Dimension transformiert. In diesem Bericht stellen wir einen Ansatz vor, der auf QR-Faktorisierung beruht. Da nur mit orthogonalen Matrizen gearbeitet wird zeichnet dieser Ansatz sich durch numerische Stabiltät aus.
+
+Wir behandeln quadratische Programme mit der folgenden Strukur. Dabei gibt $n_u$ die Anzahl der Steuerung, $n_s$ die Anzahl der Zustande und $n_{dis}$ die Anzahl der Shootingintervalle an.
+
+\begin{align*}
+\underset{u,s,p}{max}\ \	&p^\top B_{pp} p+f_p^\top p  \\ 
+						&+\frac{1}{2}\sum_{i=1}^{n_{dis}} s_i^\top B_{ss}^i s_i+u_i^\top B_{uu}^i u_i \\
+						&+\sum_{i=1}^{n_{dis}} s_i^\top B^i_{su} u_i+p^\top B_{ps}^i s_i +p^\top B_{pu}^i u_i  \\
+						&+\sum_{i=1}^{n_{dis}} (f_u^i)^\top u_i+(f_s^i)^\top s_i \\
+s.t. 	\ \				&s_{i+1}=X_p^i p +X_s^i s_i + X_u^i u_i -X_c^i  		&& i=1,\hdots,n_{dis}-1\\
+						& R_u^i u_i + R_s^i s_i+R_p^i p =R_c   		&& i=1,\hdots,n_{dis} \\
+						& \sum_{i=1}^{n_{dis}} C_u^i u_i + C_s^i s_i + R_p^i p = C_c \\
+						& p_l \leq p \leq p_u \\
+						& s_l^i \leq s_i \leq s_u^i && i=1,\hdots,n_{dis} \\ 
+						& u_l^i \leq u_i  \leq u_u^i  && i=1,\hdots,n_{dis}
+\end{align*}
+
+Die Beschreibung des Algorithmus in diesem Bericht orientiert sich an der dazu gehörigen Matlab Implementierung. Dabei wurde der Programmcode nicht auf Geschwindigkeit optimiert. Stattdessen ist der Fokus auf der Übersichtlich und der Nachvollziehbarkeit.
+\section{Der Algorithmus}
+
+Analog zu der Implementierung werden wir den Algorithmus in vier Schritten darstellen.
+
+\subsection*{Schritt 1: Anordnung der einzelnen Matrizen}
+
+Zunächst definieren wir $x=(p,s_0,u_0,s_1,u_1,\hdots,s_{n_{dis}},u_{n_{dis}})$. Somit können wir das QP auch schreiben als:
+
+\begin{align*}
+\underset{x}{max} \ \ 	& \frac{1}{2}	x^\top H x+f^\top x \\
+s.t. \ \ 				& Sx=s \\
+						& Qx=q \\
+						& b_l \leq x \leq b_u \\ 
+\end{align*}
+
+Dabei ist $$H= \left[ \begin{array}{cccccc}
+B_{pp} & B_{ps}^1 & B_{pu}^1 & \hdots & B_{ps}^{n_{dis}} & B_{pu}^{n_{dis}} \\ 
+(B_{ps}^1)^\top & B_{ss}^1 & B_{su}^1 &  &  & \\ 
+(B_{pu}^1)^\top & (B_{su}^1)^\top & B_{uu}^1 &  &  &  \\ 
+\vdots &  &  & \ddots &  &  \\ 
+(B_{ps}^{n_{dis}})^\top &  &  &  & B_{ss}^{n_{dis}} & B_{su}^{n_{dis}} \\ 
+(B_{pu}^{n_{dis}})^\top &  &  &  & (B_{su}^{n_{dis}})^\top & B_{uu}^{n_{dis}}
+\end{array} \right]  
+,f=\left[ \begin{array}{c}
+f_p \\ 
+f_s^1 \\ 
+f_u^1 \\ 
+\vdots \\ 
+f_s^{n_{dis}} \\ 
+f_u^{n_{dis}}
+\end{array}  \right]$$
+
+$$S=\left[\begin{array}{cccccccc}
+X_p^0 & X_s^0 & X_u^0 & - I &  &  &  &  \\ 
+X_p^1 &  &  & X_s^1 & X_u ^1  & -I &  &  \\ 
+\vdots &  &  &  & \ddots & \ddots & \ddots &  \\ 
+X_p^{n_{dis}-1} &  &  &  &  & X_s^{n_{dis}-1} & X_u^{n_{dis}-1} & -I
+\end{array}  \right],
+s=\left[ \begin{array}{c}
+X_c^ 0 \\ 
+X_c^1 \\ 
+\hdots \\ 
+X_c^{n_{dis}-1}
+\end{array} \right] $$
+
+$$Q=\left[ \begin{array}{cccccccc}
+R_p^0 & R_s^0 & R_u^0 &  &  &  &  &  \\ 
+R_p^1 &  &  & R_s^1 & R_u^1 &  &  &  \\ 
+\vdots &  &  &  &  & \ddots &  &  \\ 
+R_p^{n_{dis}} &  &  &  &  &  & R_s^{n_{dis}} & R_u^{n_{dis}} \\ 
+C_p & C_s^0 & C_u^0 & C_s^1 & C_u^1 & \hdots & C_s^{n_{dis}} & C_u^{n_{dis}}
+\end{array}  \right],
+q= \left[ \begin{array}{c}
+R_c^0 \\ 
+R_c^1 \\ 
+\vdots \\ 
+R_c^{n_{dis}} \\ 
+C_c
+\end{array}  \right]$$
+
+$$u= \left[ \begin{array}{c}
+p_l \\ 
+s^0_l \\ 
+u^0_l \\ 
+\vdots \\ 
+s^{n_{dis}}_l \\ 
+u^{n_{dis}}_l
+\end{array} \right],
+l= \left[ \begin{array}{c}
+p_u \\ 
+s^0_u \\ 
+u^0_u \\ 
+\vdots \\ 
+s^{n_{dis}}_u \\ 
+u^{n_{dis}}_u
+\end{array} \right]$$
+
+\subsection*{Schritt 2: Iterative QR-Faktorrisierung und Variabelentransformation}
+
+Wir betrachten nun die einzelnen Matchingblöcke und berechnen eine entsprechende QR-Zerlegung. 
+
+Sei $Q_0$ und $R_0$ die QR-Zerlegung des Blockes $[X_s^0 X_u^0 -I]$, wobei $Q_0$ eine orthonormale Matrix der Dimension $n_u+2n_s$ ist und $R_0$ eine invertierbare untere Dreiecksmatrix mit der Dimension $n_s$ ist.
+
+Es gilt also :
+
+$$\left[X_s^0 \  X_u^0 \ -I \right]= \left[R_0 \ 0 \right]Q_0$$
+
+und somit ist :
+
+$$S=\left[\begin{array}{cccccccc}
+X_p^0 & R_0 & 0 & 0 &  &  &  &  \\ 
+X_p^1 & \tilde{X_s^0} & \tilde{X_u^0} & \tilde{X_s^1} & X_u ^1  & -I &  &  \\ 
+\vdots &  &  &  & \ddots & \ddots & \ddots &  \\ 
+X_p^{n_{dis}-1} &  &  &  &  & X_s^{n_{dis}-1} & X_u^{n_{dis}-1} & -I
+\end{array}  \right] \left[\begin{array}{cccc}
+Q_0 &  &  &  \\ 
+ & I &  &  \\ 
+ &  & \ddots &  \\ 
+ &  &  & I
+\end{array}  \right]$$

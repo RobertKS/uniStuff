@@ -1,0 +1,496 @@
+%% QP Condensierung via QR Zerlegung
+%
+
+function [res] = condensingQR(data)
+    % Notation für die vollstaendig condensierte Matrix:
+    %
+    % 
+    % H             Hesse Matrix
+    % f             Gradient
+    % Con_ineq      Inequality Constraint Matrix
+    % c_ineq        rechte Seite von Inequality Constraints
+    % Con_eq        Equality Constraint Matrix
+    % c_eq          rechte Seite von Equality Constraints
+
+    %% Schritt 1 Variablen und Nebenbedingungen permutieren
+    
+    display('Permutiere Variablen und Nebenbedingungen...');
+    
+    % Sortierung der Variablen : w=(p, s0, q0, s1, q1, ...)
+    % Sortierung der Nebenbedingungen : (x_0, x_1, ..., x_ndis-1,r_0,
+    % ...,r_ndis,c)'
+    
+    % Die Matrix S besteht aus (x_0, x_1, ...,x_ndis-1)
+    % Rechte Seite s
+    % Die Matrix Q besteht aus (r_0, r_1, ..., r_ndis, c)
+    % Rechte Seite q
+    
+    % Das resultierende QP hat die Form 
+    % min 0.5 w'Hw +g'w
+    %          Sw   =s
+    %          Qw   =q
+    %      l<=  w   <=u   
+    
+    % Platz fuer Matrix S alloquieren 
+    
+        
+    
+    if data.uEnd
+        S=zeros((data.ndis-1)*data.nxd,data.np+data.ndis*(data.nxd+data.nu));
+    else
+        S=zeros((data.ndis-1)*data.nxd, ...
+            data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd);
+    end
+    
+    % Matrix S befüllen
+    
+    for i=1:data.ndis-1
+        
+        S([1+(i-1)*data.nxd:i*data.nxd],[1:data.np])=data.Xp{i};
+        
+        S([1+(i-1)*data.nxd:i*data.nxd],...
+            [1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)+data.nxd]) = ...
+            [data.Xs{i} data.Xq{i} -eye(data.nxd)];
+        
+    end
+    
+    
+    
+    
+    % Platz fuer Vektor s alloquieren
+    
+    s=zeros((data.ndis-1)*data.nxd,1);
+    
+    % Vektor s befuellen
+    
+    for i=1:data.ndis-1
+        
+        s([1+(i-1)*data.nxd:i*data.nxd])=data.Xc{i};
+    
+    end
+    
+   
+    
+    
+    % Platz fuer Matrix Q alloquieren
+    
+    if data.uEnd
+        Q=zeros(data.nrdc+data.nrcc+data.nu,data.np+data.ndis*(data.nxd+data.nu));
+    else
+        Q=zeros(data.nrdc+data.nrcc,data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd);
+    end
+    
+    % Matrix mit Ableitungen der ungekoppelten Nebenbedingungen fuellen
+    
+    irow=1;
+    
+    for i=1:data.ndis-1
+        
+        [dim,~]=size(data.Rp{i});
+        
+        Q([irow:irow+dim-1],[1:data.np])=data.Rp{i};
+        
+        Q([irow:irow+dim-1], ...
+            [1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)]) = ...
+            [data.Rs{i} data.Rq{i}];
+        
+        irow=irow+dim;
+        
+    end
+    
+    [dim,~]=size(data.Rp{data.ndis});
+    Q([irow:irow+dim-1],[1:data.np])=data.Rp{data.ndis};
+    
+    % Ungekoppelte Nebenbedingungen am Endpunkt setzten
+    
+    if data.uEnd
+        
+        Q([irow:irow+dim-1], ...
+            [1+data.np+(data.ndis-1)*(data.nxd+data.nu):data.np+data.ndis*(data.nxd+data.nu)]) = ...
+            [data.Rs{data.ndis} data.Rq{data.ndis}];
+    else
+        Q([irow:irow+dim-1], ...
+            [1+data.np+(data.ndis-1)*(data.nxd+data.nu):data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd]) = ...
+            [data.Rs{data.ndis} data.Rq{data.ndis}];
+    end
+    
+    % Gekoppelte Nebenbedingungen setzen
+    
+    Q([1+data.nrdc:data.nrdc+data.nrcc],[1:data.np])=data.Cp;
+    
+    for i=1:data.ndis-1
+        
+        Q([1+data.nrdc:data.nrdc+data.nrcc],...
+            [1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)])= ...
+            [data.Cs{i} data.Cq{i}];
+    end
+    
+    % Gekoppelte Nebenbedinguen am Endpunkt setzen
+    
+    if data.uEnd
+        
+        Q([1+data.nrdc:data.nrdc+data.nrcc], ...
+            [1+data.np+(data.ndis-1)*(data.nxd+data.nu):data.np+data.ndis*(data.nxd+data.nu)]) = ...
+            [data.Cs{data.ndis} data.Cq{data.ndis}];
+        
+        Q([1+data.nrdc+data.nrcc:end],[1+data.np+(data.ndis-2)*(data.nxd+data.nu):end])= ...
+            [zeros(data.nu,data.nxd) eye(data.nu) zeros(data.nu, data.nxd) -eye(data.nu)];
+        
+    else
+        
+        Q([1+data.nrdc:data.nrdc+data.nrcc],...
+            [1+data.np+(data.ndis-1)*(data.nxd+data.nu):data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd])= ...
+            [data.Cs{data.ndis}];
+    
+    end
+    
+   
+    
+    % Indexvektor zusammenbauen
+    
+    
+    if data.uEnd
+        iCon=ones(data.nrdc+data.nrcc+data.nu,1);
+    else
+        iCon=ones(data.nrdc+data.nrcc,1);
+    end
+    
+    index=1;
+    
+    for i=1:data.ndis
+        
+        [~,dim]=size(data.iRc{i});
+        
+        iCon([index:index+dim-1])=data.iRc{i};
+        
+        index=index+dim;
+        
+    end
+   
+    iCon([index:end])=data.iCc';
+    
+    % Platz fuer Vektor q alloquieren
+    
+    if data.uEnd
+        q=zeros(data.nrdc+data.nrcc+data.nu,1);
+    else
+        q=zeros(data.nrdc+data.nrcc,1);
+    end
+    
+    % Vektor q fuellen
+    
+    irow=1;
+    
+    for i=1:data.ndis
+        
+        dim=length(data.Rc{i});
+        q([irow:irow+dim-1])=data.Rc{i};
+        
+        irow=irow+dim;
+        
+    end
+    
+    q([data.nrdc+1:data.nrdc+data.nrcc])=data.Cc;
+    
+    if data.uEnd
+        
+        q([1+data.nrdc+data.nrcc:data.nrdc+data.nrcc+data.nu])=data.uEndc;
+        
+    end
+    
+    res.q=q;
+    
+    %% Bounds in die richtige Reihenfolge bringen
+    
+    %Platz fuer u und l alloquieren
+    
+    if data.uEnd
+        u=zeros(data.np+data.ndis*(data.nxd+data.nu),1);
+        l=zeros(data.np+data.ndis*(data.nxd+data.nu),1);
+    else
+        u=zeros(data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd,1);
+        l=zeros(data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd,1);
+    end
+    
+    % Bounds fuellen
+    
+    u([1:data.np])=data.pbu;
+    l([1:data.np])=data.pbl;
+    
+    for i=1:data.ndis-1
+        u([1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)])= ...
+            [data.xbu{i}' ; data.ubu{i}'];
+        l([1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)])= ...
+            [data.xbl{i}' ; data.ubl{i}'];
+    end
+    
+    u([1+data.np+(data.ndis-1)*(data.nxd+data.nu): ...
+        data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd]) = data.xbu{data.ndis}';
+    l([1+data.np+(data.ndis-1)*(data.nxd+data.nu): ...
+        data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd]) = data.xbl{data.ndis}';
+    
+    if data.uEnd
+        
+        u([1+data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd:data.np+data.ndis*(data.nxd+data.nu)])= ...
+            data.ubu{data.ndis};
+        
+        l([1+data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd:data.np+data.ndis*(data.nxd+data.nu)])= ...
+            data.ubl{data.ndis};
+        
+    end
+    
+    res.u=u;
+    res.l=l;
+    
+    %% Hessematrix anordnen
+    
+    % Platz fuer Hessematrix alloquieren
+    
+    if data.uEnd
+        H=zeros(data.np+data.ndis*(data.nu+data.nxd));
+    else
+        H=zeros(data.np+(data.ndis-1)*(data.nu+data.nxd)+data.nxd);
+    end
+    
+    % Bloecke fuer Parameter setzen
+    
+    H([1:data.np], [1:data.np])=data.Bpp;
+    
+    for i=1:data.ndis-1
+        H([1:data.np],...
+            [1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)])= ...
+            [data.Bps{i}' data.Bpq{i}'];
+        
+        H([1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)],...
+            [1:data.np])= ...
+            [data.Bps{i}; data.Bpq{i}];
+    end
+    
+    H([1:data.np],...
+        [1+data.np+(data.ndis-1)*(data.nxd+data.nu):data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd])=...
+        data.Bps{data.ndis}';
+    
+    H([1+data.np+(data.ndis-1)*(data.nxd+data.nu):data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd],...
+        [1:data.np])=...
+        data.Bps{data.ndis};
+    
+    % Bloecke fuer Steuerungen und Zustaende setzen
+    
+    for i=1:data.ndis-1
+        H([1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)], ...
+            [1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)])= ...
+            [data.Bss{i} data.Bsq{i}'; data.Bsq{i} data.Bqq{i}];
+    end
+    
+    H([1+data.np+(data.ndis-1)*(data.nxd+data.nu):data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd], ...
+            [1+data.np+(data.ndis-1)*(data.nxd+data.nu):data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd])= ...
+            [data.Bss{data.ndis}];
+        
+    % Bloecke fuer uEnd setzen
+    
+    if data.uEnd
+        H([1:data.np],...
+            [1+data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd:data.np+data.ndis*(data.nxd+data.nu)]) ...
+            =data.Bpq{data.ndis}';
+        H([1+data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd:data.np+data.ndis*(data.nxd+data.nu)],...
+            [1:data.np]) ...
+            =data.Bpq{data.ndis};
+        
+        H([1+data.np+(data.ndis-1)*(data.nxd+data.nu):data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd],...
+            [1+data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd:data.np+data.ndis*(data.nxd+data.nu)])=...
+            data.Bsq{data.ndis}';
+        
+        H([1+data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd:data.np+data.ndis*(data.nxd+data.nu)],...
+            [1+data.np+(data.ndis-1)*(data.nxd+data.nu):data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd])=...
+            data.Bsq{data.ndis};
+        
+        H([1+data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd:data.np+data.ndis*(data.nxd+data.nu)], ...
+            [1+data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd:data.np+data.ndis*(data.nxd+data.nu)])= ...
+            data.Bqq{data.ndis};
+    end
+    
+    
+    %% Gradient anordnen
+    
+    % Platz fuer Vektor g alloquieren
+    
+    if data.uEnd
+        g=zeros(data.np+data.ndis*(data.nxd+data.nu),1);
+    else
+        g=zeros(data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd,1);
+    end
+    
+    % Vektor g befuellen
+    
+    g([1:data.np])=data.fp;
+    
+    
+    for i=1:data.ndis-1
+        g([1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)])= ...
+            [data.fs{i} ; data.fq{i}];
+    end
+    
+    g([1+data.np+(data.ndis-1)*(data.nxd+data.nu):data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd]) ...
+        =data.fs{data.ndis};
+    
+    if data.uEnd
+        g([1+data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd: data.np+data.ndis*(data.nxd+data.nu)])...
+            =data.fq{data.ndis};
+    end
+    
+    res.g=g;
+    %% Schritt 2 Iterativ die Bloecke mit einer QR Zerlegung faktorisieren
+    
+    display('Faktorisiere Matching Bloecke und berechne Transformationsmatrix...');
+    
+
+    
+    % Einzelne Matching Bloecke faktorisieren 
+    
+    O=eye(length(S));
+    
+    
+    timeqr=tic;
+    for i=1:data.ndis-2
+        
+        A=S([1+(i-1)*data.nxd:i*data.nxd],[1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)+data.nxd]);
+        [O_orth, R]=qr(A');
+        
+        
+        S([1+(i-1)*data.nxd:(i+1)*data.nxd],[1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)+data.nxd])= ...
+            S([1+(i-1)*data.nxd:(i+1)*data.nxd],[1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)+data.nxd])*O_orth;
+         
+        O_temp=eye(length(S));
+        O_temp([1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)+data.nxd], ...
+            [1+data.np+(i-1)*(data.nxd+data.nu):data.np+i*(data.nxd+data.nu)+data.nxd])=O_orth;
+        O=O_temp'*O;
+        
+    end
+    
+    A=S([1+(data.ndis-2)*data.nxd:(data.ndis-1)*data.nxd], ...
+        [1+data.np+(data.ndis-2)*(data.nxd+data.nu):data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd]);
+        [O_orth, R]=qr(A');
+        
+    timeqr=toc(timeqr);
+    
+    fprintf('Zeit fuer QR-Faktorisierung : %f \n',timeqr);
+        
+        
+    S([1+(data.ndis-2)*data.nxd:(data.ndis-1)*data.nxd], ...
+        [1+data.np+(data.ndis-2)*(data.nxd+data.nu):data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd])= ...
+        S([1+(data.ndis-2)*data.nxd:(data.ndis-1)*data.nxd], ...
+        [1+data.np+(data.ndis-2)*(data.nxd+data.nu):data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd])*O_orth;
+    
+    O_temp=eye(length(S));
+    O_temp([1+data.np+(data.ndis-2)*(data.nxd+data.nu):data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd], ...
+        [1+data.np+(data.ndis-2)*(data.nxd+data.nu):data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd])=O_orth;
+        O=O_temp'*O;
+    
+    
+    % Permutationsmatrix erstellen
+    
+    P=zeros(length(S));
+    
+    % Bloecke fuer Diagonalmatrizen setzen
+    
+    for i=1:data.ndis
+        
+        P([1+data.np+(i-1)*(data.nxd+data.nu):data.np+(i-1)*(data.nxd+data.nu)+data.nxd], ...
+            [1+(i-1)*data.nxd:i*data.nxd])=eye(data.nxd);
+        
+    end
+    
+    % Bloecke fuer Parameterspalten setzen
+    
+    P([1:data.np],[1+data.ndis*data.nxd:data.np+data.ndis*data.nxd])= ...
+        eye(data.np);
+    
+    for i=1:data.ndis-1
+        
+        P([1+data.np+(i-1)*(data.nxd+data.nu)+data.nxd:data.np+i*(data.nxd+data.nu)], ...
+            [1+data.np+data.ndis*data.nxd+(i-1)*data.nu:data.np+data.ndis*data.nxd+i*data.nu])= ...
+            eye(data.nu);
+        
+    end
+    
+    if data.uEnd
+        
+        P([1+data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd:data.np+data.ndis*(data.nxd+data.nu)], ...
+            [1+data.np+data.ndis*data.nxd+(data.ndis-1)*data.nu:data.np+data.ndis*data.nxd+data.ndis*data.nu])= ...
+            eye(data.nu);
+        
+    end
+    
+  
+    S=S*P;
+    res.T=P'*O;
+    T=res.T;
+    
+    %% Schritt 3 Variablen Transformation auf QP uebertragen
+    
+    display('Transformiere QP...');
+    
+    H=T*H*T';
+    g=T*g;
+    Q=Q*T';
+    
+    res.S=S;
+    %% Schritt 4 Abaengigkeit von Variablen ausnutzen und in QP einsetzen
+    
+    display('Führe Condensing aus...');
+    
+    n= data.nxd*(data.ndis-1);   % Anzahl an abhaeniger Variablen
+    
+    % Anzahl unabhaengiger Variablen
+    
+    if data.uEnd
+        m= data.np+data.nxd+data.nu*data.ndis;
+    else
+        m= data.np+data.nxd+data.nu*(data.ndis-1);
+    end
+    
+    % Matrizen aufspliten 
+    
+    H11=H([1:n],[1:n]);
+    H12=H([1:n],[n+1:n+m]);
+    H22=H([n+1:n+m],[n+1:n+m]);
+    
+    f1=g([1:n]);
+    f2=g([n+1:n+m]);
+    
+    S1=S(:,[1:n]);
+    S2=S(:,[1+n:n+m]);
+    
+    Q1=Q(:,[1:n]);
+    Q2=Q(:,[n+1:n+m]);
+    
+    % Neue Matrizen zusammensetzen
+    
+    res.S1=S1;
+    s_t=S1\s;
+    S_t=S1\S2;
+    
+    res.s_t=s_t;
+    res.S_t=S_t;
+    
+    res.H=S_t'*H11*S_t-H12'*S_t-S_t'*H12+H22;
+    res.f=-S_t'*H11*s_t+H12'*s_t-S_t'*f1+f2;
+    
+    Con=Q2-Q1*S_t;
+    c=q-Q1*s_t;
+    
+    res.Con_eq=Con(iCon==1,:);
+    res.c_eq=c(iCon==1);
+    
+    bndCon=T'*[-S_t; eye(m)];
+    bndc=T'*[s_t; zeros(m,1)];
+    
+    res.Con_ineq=[-Con(iCon==0,:);
+        bndCon;
+        -bndCon];
+    
+    res.c_ineq=[-c(iCon==0);
+        u-bndc;
+        bndc-l];
+
+end

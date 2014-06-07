@@ -1,0 +1,335 @@
+n%% Funktion um relevante Daten des QPs von dem MUSCOD-II Matlab Logging auszulesen
+%
+%  Input:   input       mat File des Loggings
+%           iteration   Index der Iteration                    
+%
+%  Output:  -------Allgemeine Parameter --------------------
+%
+%           nvar        Anzahl der Variablen
+%           ndis        Anzahl der Diskretisierungsstellen
+%           neq         Anzahl der Gleichungsbedingungen
+%           nxd         Anzahl der differentiellen Zustaende
+%           nu          Anzahl der Steuerungen
+%           np          Anzahl der Parameter
+%           nrdc        Anzahl der ungekoppelten Nebenbedingungen
+%           nrcc        Anzahl der gekoppelten Nebenbedingungen
+%           uEnd        Bool ob Steuerung am letzten k
+% 
+%           -------Bloecke der Nebenbedingungen -----------
+%           
+%           Rp{i}       Ableitung der ungekoppelten Nebenbedingungen nach Parameter           
+%           Rq{i}       Ableitung der ungekoppelten Nebenbedingungen nach Steuerung
+%           Rs{i}       Ableitung der ungekoppelten Nebenbedingungen nach Zustaenden
+%           Rc{i}       Rechte Seite    
+%
+%           Xp{i}       Ableitung der Matchingbedingungen nach Parameter           
+%           Xq{i}       Ableitung der Matchingbedingungen nach Steuerung
+%           Xs{i}       Ableitung der Matchingbedingungen nach Zustaenden
+%           Xc{i}       Rechte Seite 
+%
+%           Cp{i}       Ableitung der gekoppelten Nebenbedingungen nach Parameter           
+%           Cq{i}       Ableitung der gekoppelten Nebenbedingungen nach Steuerung
+%           Cs{i}       Ableitung der gekoppelten Nebenbedingungen nach Zustaenden
+%           Cc          Rechte Seite
+%
+%           -------Bloecke der oberen/unteren Schranken--------------------
+%           
+%           xbu{i}      Obere Schranke für Zustaende
+%           xbl{i}      Untere Schranke für Zustaende
+%           ubu{i}      Obere Schranke für Steuerung
+%           ubl{i}      Untere Schranke für Steuerung
+%           pbu         Obere Schranke für Parameter
+%           pbl         Untere Schranke für Parameter
+%
+%           -------Index Vektor für Gleichung oder Ungleichung-------------
+%
+%           iRc{i}      Indexvektor für ungekoppelte Nebenbedingung
+%           iCc         Indexvektor für gekoppelte Nebenbedingung
+%                       -> 1 Gleichung
+%                       -> 0 Ungleichung
+%
+%           -------Bloecke der Zielfunktion -------------------------------
+%
+%           Bqq{i}      Hessematrix zweifache Ableitung nach Steuerung
+%           Bsq{i}      Hessematrix gemischte Ableitung nach Steuerung und Zustand
+%           Bss{i}      Hessematrix zweifache Ableitung nach Zustand
+%
+%           Bpq{i}      Hessematrix gemischte Ableitung nach Steuerung und Parameter
+%           Bpp         Hessematrix zweifache Ableitung nach Parameter
+%           Bps{i}      Hessematrix gemischte Ableitung nach Parameter und Steuerung
+%
+%           fq{i}       Gradient Ableitung nach Steuerung
+%           fp          Gradient Ableitung nach Parameter
+%           fs{i}       Gradient Ableitung nach Zustand
+%
+%
+function [ data ] = getData( input, iteration )
+    
+
+    %% Relevante Daten auslesen
+    
+    %Dimensionen und Anzahl der Variablen auslesen
+    data.nvar =input.iterations{1,1}.dimensions.nvar;
+    data.ndis =input.iterations{1,1}.dimensions.ndis;
+    data.neq  =input.iterations{1,1}.dimensions.neq;
+    
+    data.nxd  =length(input.iterations{1,1}.inivar.sd{1,1});
+    
+    data.nu   =length(input.iterations{1,1}.inivar.q{1,1});
+    
+    data.np   =input.iterations{1,1}.vdim.phf;  
+    
+    [~,data.nrcc]=size(input.iterations{1,1}.res.coup.value{1,1});
+    
+    %Gradient
+    data.b=input.iterations{iteration,1}.qp.gradient';
+    data.c=input.iterations{iteration,1}.qp.constraints.vector';
+    
+    data.bl=input.iterations{iteration,1}.qp.bounds.lower;
+    data.bu=input.iterations{iteration,1}.qp.bounds.upper;
+    
+
+    
+    %% Constraints auslesen
+    
+    eq_constraint=input.iterations{iteration, 1}.qp.constraints.matrix;
+    
+    
+    % Flag ob Steuerung am letzten Knoten eingefuehrt wurde
+    uEnd=~(data.nvar==data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nxd);    
+    data.uEnd=uEnd;
+    
+    %Iteration über die einzelnen MSNodes
+    
+    irow=1;             % Index der Zeile
+    icol=1+data.np;     % Index der Spalte
+    
+    data.nrdc=0;
+    
+    for i=1:data.ndis-1
+        
+        
+        %Dimension der decoupled Constraints an MSNode i bestimmen
+        
+        dim=length(input.iterations{iteration, 1}.res.dec.value{i});
+        
+        %Counter für anzahl der Constraints hochsetzten
+        
+        data.nrdc=data.nrdc+dim;
+        
+        %Matrix Rp bestimmen
+        
+        data.Rp{i}=eq_constraint([irow:irow+dim-1],[1:data.np]);
+        
+        %Matrix Rq bestimmen
+        
+        data.Rq{i}=eq_constraint([irow:irow+dim-1],[icol:icol+data.nu-1]);
+        
+        %Matrix Rs bestimmen
+        
+        data.Rs{i}=eq_constraint([irow:irow+dim-1],[icol+data.nu:icol+data.nu+data.nxd-1]);
+        
+        %Rechte Seite Rc bestimmen
+        
+        data.Rc{i}=data.c([irow:irow+dim-1]);
+        
+        %Indexvektor iRc bestimmen
+        
+        data.iRc{i}=input.iterations{iteration,1}.qp.istateStart( ... 
+            [data.nvar+irow:data.nvar+irow+dim-1]);
+        
+        data.iRc{i}=(data.iRc{i}==3);
+        
+        %Matrix Xp bestimmen
+       
+        data.Xp{i}=eq_constraint([irow+dim:irow+dim+data.nxd-1],[1:data.np]);
+    
+        %Matrix Xq bestimmen
+        
+        data.Xq{i}=eq_constraint([irow+dim:irow+dim+data.nxd-1],[icol:icol+data.nu-1]);
+        
+        %Matrix Xs bestimmen
+        
+        data.Xs{i}=eq_constraint([irow+dim:irow+dim+data.nxd-1],[icol+data.nu:icol+data.nu-1+data.nxd]);
+        
+        %Rechte Seite Xc bestimmen
+        
+        data.Xc{i}=data.c([irow+dim:irow+dim+data.nxd-1]);
+        
+        %Indizes hochsetzen
+        
+        irow=irow+dim+data.nxd;
+        icol=icol+data.nxd+data.nu;
+        
+    end
+    
+    %Constraints am letzten MSNode auslesen
+    
+    
+    dim=length(input.iterations{iteration, 1}.res.dec.value{data.ndis});
+     
+    if uEnd
+        data.Rq{data.ndis}=eq_constraint([irow:irow+dim-1],[icol:icol+data.nu-1]);
+        data.Rs{data.ndis}=eq_constraint([irow:irow+dim-1],[icol+data.nu:icol+data.nxd-1+data.nu]);
+    else
+        data.Rs{data.ndis}=eq_constraint([irow:irow+dim-1],[icol:icol+data.nxd-1]);
+    end
+    
+    data.Rp{data.ndis}=eq_constraint([irow:irow+dim-1],[1:data.np]);
+    
+    data.Rc{data.ndis}=data.c([irow:irow+dim-1]);
+    
+    %Indexvektor fuer ungekoppelte Nebenbedingungen
+    
+    data.iRc{data.ndis}=input.iterations{iteration,1}.qp.istateStart( ... 
+           [data.nvar+irow:data.nvar+irow+dim-1]);
+        
+    data.iRc{data.ndis}=(data.iRc{data.ndis}==3);
+    
+   
+    
+    irow=irow+dim;
+    
+    data.nrdc=data.nrdc+dim;
+    
+    %Coupled Constraints auslesen
+    
+    data.Cp=eq_constraint([irow:irow+data.nrcc-1],[1:data.np]);
+    
+    for i=0:data.ndis-2
+        
+        
+        data.Cq{i+1}=eq_constraint([irow:irow+data.nrcc-1], ...
+            [i*(data.nxd+data.nu)+1+data.np:i*(data.nxd+data.nu)+data.nu+data.np]);
+        data.Cs{i+1}=eq_constraint([irow:irow+data.nrcc-1], ...
+            [i*(data.nxd+data.nu)+1+data.nu+data.np:i*(data.nxd+data.nu)+data.nu+data.np+data.nxd]);
+        
+    end
+    
+    data.Cs{data.ndis}=eq_constraint([irow:irow+data.nrcc-1],[end-data.nxd+1:end]);
+    
+    if uEnd
+        data.Cq{data.ndis}=eq_constraint([irow:irow+data.nrcc-1],...
+            [1+data.np+(data.ndis-1)*(data.nxd+data.nu):1+data.np+(data.ndis-1)*(data.nxd+data.nu)+data.nu-1]);
+    end
+    
+    
+    data.Cc=data.c([irow:irow+data.nrcc-1]);
+    
+    
+    %Indexvektor für gekoppelte Nebenbedingugen
+    
+    data.iCc=input.iterations{iteration,1}.qp.istateStart([data.nvar+ irow:end]);
+    
+    data.iCc=(data.iCc==3);
+    
+    %Rechte Seite fuer UEnd Bedingugng
+    
+    if uEnd
+        
+        data.uEndc=data.c([irow+data.nrcc:end]);
+        
+    end
+    
+    
+    %% Bounds auslesen
+    
+    
+    data.pbu=data.bu([1:data.np]);
+    data.pbl=data.bl([1:data.np]);
+    
+    
+    for i=1:data.ndis-1
+        data.xbu{i}=data.bu([1+data.np+data.nu+(i-1)*(data.nu+data.nxd): ... 
+            data.np+i*(data.nu+data.nxd)]);
+        data.xbl{i}=data.bl([1+data.np+data.nu+(i-1)*(data.nu+data.nxd): ... 
+            data.np+i*(data.nu+data.nxd)]);
+        data.ubu{i}=data.bu([1+data.np+(i-1)*(data.nxd+data.nu): ...
+            data.np+ i*data.nu+(i-1)*data.nxd]);
+        data.ubl{i}=data.bl([1+data.np+(i-1)*(data.nxd+data.nu): ...
+            data.np+ i*data.nu+(i-1)*data.nxd]);
+    end
+    
+    if uEnd
+        
+        data.ubu{data.ndis}=data.bu([1+data.np+(data.ndis-1)*(data.nxd+data.nu): ...
+            data.np+ data.ndis*data.nu+(data.ndis-1)*data.nxd]);
+        data.ubl{data.ndis}=data.bl([1+data.np+(data.ndis-1)*(data.nxd+data.nu): ...
+            data.np+ data.ndis*data.nu+(data.ndis-1)*data.nxd]);        
+    end
+    
+    
+    data.xbu{data.ndis}=data.bu([end-data.nxd+1:end]);
+    data.xbl{data.ndis}=data.bl([end-data.nxd+1:end]);
+    
+    %% Hessematrix auslesen
+    
+    B=input.iterations{iteration, 1}.qp.hessian;
+    
+    %Blöcke Bpp Bps Bpq der Hessematrix auslesen
+    
+    data.Bpp=B([1:data.np],[1:data.np]);
+    
+    irow=data.np+1;
+    
+    for i=[1:data.ndis-1]
+        
+        data.Bpq{i}=B([irow:irow+data.nu-1],[1:data.np]);
+        data.Bps{i}=B([irow+data.nu:irow+data.nu+data.nxd-1],[1:data.np]);
+       
+        irow=irow+data.nu+data.nxd;
+        
+    end
+    
+    
+    if uEnd
+        
+        data.Bpq{data.ndis}=B([irow:irow+data.nu-1],[1:data.np]);
+        data.Bps{data.ndis}=B([irow+data.nu:irow+data.nu+data.nxd-1],[1:data.np]);
+       
+    else
+        
+        data.Bps{data.ndis}=B([irow:irow+data.nxd-1],[1:data.np]);
+    
+    end
+    
+    data.fp=data.b([1:data.np]);
+    
+    %Blöcke Bss Bqq Bsq der Hessematrix auslesen
+    for i=[1:data.ndis-1]
+        
+        rows    =(i-1)*(data.nxd+data.nu)+1+data.np;
+        column  =(i-1)*(data.nxd+data.nu)+1+data.np;
+        
+        data.Bqq{i}=B([rows:rows+data.nu-1],[column:column+data.nu-1]);
+        data.Bss{i}=B([rows+data.nu:rows+data.nxd+data.nu-1],[column+data.nu:column+data.nxd+data.nu-1]);
+        data.Bsq{i}=B([rows:rows+data.nu-1],[column+data.nu:column+data.nxd+data.nu-1]);
+        
+        %Gradient auslesen
+        
+        data.fq{i}=data.b([rows:rows + data.nu-1]);
+        data.fs{i}=data.b([rows+data.nu:rows+data.nu+data.nxd-1]);
+        
+    end
+    
+    rows    =(data.ndis-1)*(data.nxd+data.nu)+1+data.np;
+    column  =(data.ndis-1)*(data.nxd+data.nu)+1+data.np;
+    
+    if data.uEnd
+        
+        data.Bqq{data.ndis}=B([rows:rows+data.nu-1],[column:column+data.nu-1]);
+        data.Bss{data.ndis}=B([rows+data.nu:rows+data.nxd+data.nu-1],[column+data.nu:column+data.nxd+data.nu-1]);
+        data.Bsq{data.ndis}=B([rows:rows+data.nu-1],[column+data.nu:column+data.nxd+data.nu-1]);
+        
+        %Gradient auslesen
+        
+        data.fq{data.ndis}=data.b([rows:rows + data.nu-1]);
+        data.fs{data.ndis}=data.b([rows+data.nu:rows+data.nu+data.nxd-1]);
+        
+    else
+        data.Bss{data.ndis}=B([rows:rows+data.nxd-1],[column:column+data.nxd-1]);
+        data.fs{data.ndis}=data.b([rows:rows+data.nxd-1]);
+    end
+
+end
+

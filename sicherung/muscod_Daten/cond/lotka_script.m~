@@ -1,0 +1,26 @@
+clear all;
+
+
+%% Daten laden und Condensing durchführen
+
+lotkaTest=load('RES/lotkaTest.mat');
+
+data=getData(lotkaTest,1);
+
+
+%% Standard Condensing ausführen
+%
+subplot(1,3,1);
+res=condensing(data);
+KKT=plotKKTMat(res);
+
+%% LU Condensing ausführen
+%
+subplot(1,3,2);
+res1=condensingLU(data);
+KKT1=plotKKTMat(res1);
+
+%% Differenz plotten
+%
+subplot(1,3,3)
+imagesc(abs(KKT-KKT1);

@@ -1,0 +1,24 @@
+clear all;
+close all;
+
+itData=load('../walker2d_Daten/walker2d.mat');
+
+data=getData(itData,1);
+
+resStd=condensing(data);
+
+cmeq=resStd.Eq(resStd.istate==1,:);
+
+
+
+
+opt=sdpsettings('solver','lpsolve','verbose',10,'warning',1);
+
+x = sdpvar(col,1);
+d1= sdpvar(rows-N,1);
+d2= sdpvar(rows-N,1);
+
+Constraints = [resStd.bl<=x<=resStd.bu , cm*x <= bu2 + d1 , bl2-d2<=cm*x , d1 >=0 , d2 >= 0];
+
+obj=sum(d1)+sum(d2);
+solvesdp(Constraints,obj,opt)
