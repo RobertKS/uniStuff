@@ -1,19 +1,19 @@
 \section{Einleitung}
 Bei der Lösung von Optimale Steurungs Problemen (OCP) mit SQP-Verfahren tauchen quadratische Programme (QP)  mit einer typischen Struktur auf. Durch die Ausnutzung dieser Struktur lässt sich die Geschwindigkeit der Verfahren stark erhöhen. Dabei wird das ursprüngliche dünnbesetzte QP in ein dichtbesetztes QP mit kleinerer Dimension transformiert. In diesem Bericht stellen wir einen Ansatz vor, der auf QR-Faktorisierung beruht. Da nur mit orthogonalen Matrizen gearbeitet wird zeichnet dieser Ansatz sich durch numerische Stabiltät aus.
 
-Wir behandeln quadratische Programme mit der folgenden Strukur. Dabei gibt $n_u$ die Anzahl der Steuerung, $n_s$ die Anzahl der Zustande und $n_{dis}$ die Anzahl der Shootingintervalle an.
+Wir behandeln quadratische Programme mit der folgenden Strukur. Dabei gibt $n_u$ die Anzahl der Steuerung, $n_s$ die Anzahl der Zustande und $N$ die Anzahl der Shootingintervalle an. Um die Darstellung einfach zu halten gehen wir davon aus, dass die gekoppelten sowie die ungekoppelten Nebenbedingungen mit Gleichheit erfüllt sein müssen. Der Ansatz lässt sich jedoch problemlos auch auf Ungleichungsnebenbedingungen erweitern.
 
 \begin{align*}
-\underset{u,s,p}{max}\ \	&p^\top B_{pp} p+f_p^\top p  \\ 
-						&+\frac{1}{2}\sum_{i=1}^{n_{dis}} s_i^\top B_{ss}^i s_i+u_i^\top B_{uu}^i u_i \\
-						&+\sum_{i=1}^{n_{dis}} s_i^\top B^i_{su} u_i+p^\top B_{ps}^i s_i +p^\top B_{pu}^i u_i  \\
-						&+\sum_{i=1}^{n_{dis}} (f_u^i)^\top u_i+(f_s^i)^\top s_i \\
-s.t. 	\ \				&s_{i+1}=X_p^i p +X_s^i s_i + X_u^i u_i -X_c^i  		&& i=1,\hdots,n_{dis}-1\\
-						& R_u^i u_i + R_s^i s_i+R_p^i p =R_c   		&& i=1,\hdots,n_{dis} \\
-						& \sum_{i=1}^{n_{dis}} C_u^i u_i + C_s^i s_i + R_p^i p = C_c \\
+\underset{u,s,p}{min}\ \	&p^\top B_{pp} p+f_p^\top p  \\ 
+						&+\frac{1}{2}\sum_{i=1}^{N} s_i^\top B_{ss}^i s_i+u_i^\top B_{uu}^i u_i \\
+						&+\sum_{i=1}^{N} s_i^\top B^i_{su} u_i+p^\top B_{ps}^i s_i +p^\top B_{pu}^i u_i  \\
+						&+\sum_{i=1}^{N} (f_u^i)^\top u_i+(f_s^i)^\top s_i \\
+s.t. 	\ \				&s_{i+1}=X_p^i p +X_s^i s_i + X_u^i u_i -X_c^i  		&& i=1,\hdots,N-1\\
+						& R_u^i u_i + R_s^i s_i+R_p^i p =R_c   		&& i=1,\hdots,N \\
+						& \sum_{i=1}^{N} C_u^i u_i + C_s^i s_i + R_p^i p = C_c \\
 						& p_l \leq p \leq p_u \\
-						& s_l^i \leq s_i \leq s_u^i && i=1,\hdots,n_{dis} \\ 
-						& u_l^i \leq u_i  \leq u_u^i  && i=1,\hdots,n_{dis}
+						& s_l^i \leq s_i \leq s_u^i && i=1,\hdots,N \\ 
+						& u_l^i \leq u_i  \leq u_u^i  && i=1,\hdots,N
 \end{align*}
 
 Die Beschreibung des Algorithmus in diesem Bericht orientiert sich an der dazu gehörigen Matlab Implementierung. Dabei wurde der Programmcode nicht auf Geschwindigkeit optimiert. Stattdessen ist der Fokus auf der Übersichtlich und der Nachvollziehbarkeit.
@@ -23,57 +23,57 @@ Analog zu der Implementierung werden wir den Algorithmus in vier Schritten darst
 
 \subsection*{Schritt 1: Anordnung der einzelnen Matrizen}
 
-Zunächst definieren wir $x=(p,s_0,u_0,s_1,u_1,\hdots,s_{n_{dis}},u_{n_{dis}})$. Somit können wir das QP auch schreiben als:
+Zunächst definieren wir $x=(p,s_0,u_0,s_1,u_1,\hdots,s_{N},u_{N})$. Somit können wir das QP auch schreiben als:
 
 \begin{align*}
-\underset{x}{max} \ \ 	& \frac{1}{2}	x^\top H x+f^\top x \\
+x^\star=\underset{x}{max} \ \ 	& \frac{1}{2}	x^\top H x+f^\top x \\
 s.t. \ \ 				& Sx=s \\
 						& Qx=q \\
 						& b_l \leq x \leq b_u \\ 
 \end{align*}
 
 Dabei ist $$H= \left[ \begin{array}{cccccc}
-B_{pp} & B_{ps}^1 & B_{pu}^1 & \hdots & B_{ps}^{n_{dis}} & B_{pu}^{n_{dis}} \\ 
+B_{pp} & B_{ps}^1 & B_{pu}^1 & \hdots & B_{ps}^{N} & B_{pu}^{N} \\ 
 (B_{ps}^1)^\top & B_{ss}^1 & B_{su}^1 &  &  & \\ 
 (B_{pu}^1)^\top & (B_{su}^1)^\top & B_{uu}^1 &  &  &  \\ 
 \vdots &  &  & \ddots &  &  \\ 
-(B_{ps}^{n_{dis}})^\top &  &  &  & B_{ss}^{n_{dis}} & B_{su}^{n_{dis}} \\ 
-(B_{pu}^{n_{dis}})^\top &  &  &  & (B_{su}^{n_{dis}})^\top & B_{uu}^{n_{dis}}
+(B_{ps}^{N})^\top &  &  &  & B_{ss}^{N} & B_{su}^{N} \\ 
+(B_{pu}^{N})^\top &  &  &  & (B_{su}^{N})^\top & B_{uu}^{N}
 \end{array} \right]  
 ,f=\left[ \begin{array}{c}
 f_p \\ 
 f_s^1 \\ 
 f_u^1 \\ 
 \vdots \\ 
-f_s^{n_{dis}} \\ 
-f_u^{n_{dis}}
+f_s^{N} \\ 
+f_u^{N}
 \end{array}  \right]$$
 
 $$S=\left[\begin{array}{cccccccc}
 X_p^0 & X_s^0 & X_u^0 & - I &  &  &  &  \\ 
 X_p^1 &  &  & X_s^1 & X_u ^1  & -I &  &  \\ 
 \vdots &  &  &  & \ddots & \ddots & \ddots &  \\ 
-X_p^{n_{dis}-1} &  &  &  &  & X_s^{n_{dis}-1} & X_u^{n_{dis}-1} & -I
+X_p^{N-1} &  &  &  &  & X_s^{N-1} & X_u^{N-1} & -I
 \end{array}  \right],
 s=\left[ \begin{array}{c}
 X_c^ 0 \\ 
 X_c^1 \\ 
 \hdots \\ 
-X_c^{n_{dis}-1}
+X_c^{N-1}
 \end{array} \right] $$
 
 $$Q=\left[ \begin{array}{cccccccc}
 R_p^0 & R_s^0 & R_u^0 &  &  &  &  &  \\ 
 R_p^1 &  &  & R_s^1 & R_u^1 &  &  &  \\ 
 \vdots &  &  &  &  & \ddots &  &  \\ 
-R_p^{n_{dis}} &  &  &  &  &  & R_s^{n_{dis}} & R_u^{n_{dis}} \\ 
-C_p & C_s^0 & C_u^0 & C_s^1 & C_u^1 & \hdots & C_s^{n_{dis}} & C_u^{n_{dis}}
+R_p^{N} &  &  &  &  &  & R_s^{N} & R_u^{N} \\ 
+C_p & C_s^0 & C_u^0 & C_s^1 & C_u^1 & \hdots & C_s^{N} & C_u^{N}
 \end{array}  \right],
 q= \left[ \begin{array}{c}
 R_c^0 \\ 
 R_c^1 \\ 
 \vdots \\ 
-R_c^{n_{dis}} \\ 
+R_c^{N} \\ 
 C_c
 \end{array}  \right]$$
 
@@ -82,16 +82,16 @@ p_l \\
 s^0_l \\ 
 u^0_l \\ 
 \vdots \\ 
-s^{n_{dis}}_l \\ 
-u^{n_{dis}}_l
+s^{N}_l \\ 
+u^{N}_l
 \end{array} \right],
 l= \left[ \begin{array}{c}
 p_u \\ 
 s^0_u \\ 
 u^0_u \\ 
 \vdots \\ 
-s^{n_{dis}}_u \\ 
-u^{n_{dis}}_u
+s^{N}_u \\ 
+u^{N}_u
 \end{array} \right]$$
 
 \subsection*{Schritt 2: Iterative QR-Faktorrisierung und Variabelentransformation}
@@ -102,18 +102,203 @@ Sei $Q_0$ und $R_0$ die QR-Zerlegung des Blockes $[X_s^0 X_u^0 -I]$, wobei $Q_0$
 
 Es gilt also :
 
-$$\left[X_s^0 \  X_u^0 \ -I \right]= \left[R_0 \ 0 \right]Q_0$$
+$$\left[ \begin{array}{ccc}
+X_s^0 &  X_u^0 & -I \\ 
+0 & 0 & X_s^1
+\end{array}\right]
+= \left[ 
+\begin{array}{ccc} 
+R_0 & 0 & 0 \\
+\tilde{X}^0_s & \tilde{X}^0_u & \hat{X}^1_s 
+\end{array}\right]Q_0$$
+
+
+Dieser Prozess wiederholen wir nun für alle folgenden Blockzeilen. Für $i=2,\hdots,N-1$ sind die Matrizen $R_i$ und $Q_i$ rekursiv so gewählt, dass
+$$\left[ \begin{array}{ccc}
+\hat{X}_s^i &  X_u^i & -I \\ 
+0 & 0 & X_s^{i+1}
+\end{array}\right]
+= \left[ 
+\begin{array}{ccc} 
+R_i & 0 & 0 \\
+\tilde{X}^i_s & \tilde{X}^i_u & \hat{X}^{i+1}_s
+\end{array}\right]Q_i$$
+gilt. Sei $\tilde{Q}_i$ die orthonormale Matrix, die die entsprechende Spaltenoperation repräsentiert. Die Matrix hat also die Struktur $$\tilde{Q}_i=\left[\begin{array}{c|c|c}
+I_{n_p+(i-1)(n_s+n_u)} & & \\
+\hline
+& Q_i & \\
+\hline
+&&I_{(N-i-2)(n_u+n_s)-n_s}\\
+\end{array}\right].$$
+Die Struktur der Matrix $S$ verändert sich also:
+
+\begin{align*}
+S&=\left[\begin{array}{cccccccc}
+X_p^0 & R_0 & 0 & 0 &  &  &  &  \\ 
+X_p^1 & \tilde{X}_s^0 & \tilde{X}_u^0 & \hat{X}_s^1 & X_u ^1  & -I &  &  \\ 
+\vdots &  &  &  & \ddots & \ddots & \ddots &  \\ 
+X_p^{N-1} &  &  &  &  & X_s^{N-1} & X_u^{N-1} & -I
+\end{array}  \right]Q_0 \\
+&=\left[\begin{array}{cccccccccc}
+X_p^0 & R_0 &  &  &  &  &  &  \\ 
+X_p^1 & \tilde{X}_s^0 & \tilde{X}_u^0 & R_1 &  &  &  &  \\ 
+X_p^2  & &  & \tilde{X}_s^1 & \tilde{X}_u^1 & \hat{X}_s^2 & X_u^2& -I  \\ 
+\vdots &  &  & & & & \ddots & \ddots & \ddots &  \\ 
+X_p^{N-1} &  &  & & & &  & X_s^{N-1} & X_u^{N-1} & -I
+\end{array} \right]Q_1Q_0\\
+&=\underbrace{\left[
+\begin{array}{cccccccc}
+X_p^0 & R_0 &  &  &  &  &  &  \\ 
+X_p^1 & \tilde{X}_s^0 & \tilde{X}_u^0 & R_1 &  &  &  &  \\ 
+X_p^2 &  &  & \tilde{X}_s^1 & \tilde{X}_u^1 & R_2 &  &  \\ 
+\vdots &  &  &  & \ddots & \ddots & \ddots &  \\ 
+x_p^{N-1} &  &  &  &  & R_{N-1} & 0 & 0
+\end{array}  \right]}_{:=\tilde{S}}
+\underbrace{Q_{N-1}\hdots Q_1Q_0}_{:=Q}.
+\end{align*}
+
+
+Anschließend sortieren wir die Spalten von $\tilde{S}$ so um dass $\hat{S}=\left[\hat{S}_1 \vert \hat{S}_2 \right]$ gilt, mit
+
+$$\hat{S}_1=\left[\begin{array}{ccccccc}
+R_0 &  &  &  &      \\
+\tilde{X}_s^0 & R_1   &  &  &   \\
+ & \tilde{X}^1_s  & \ddots &  & \\
+   &  &   \ddots & R_{N-2} &   \\
+ &  &    & \tilde{X}^{N-2}_s & R_{N-1}    
+\end{array} \right],
+\hat{S}_2=
+\left[ \begin{array}{ccccccc}
+X_p^0 & \tilde{X}^0_u &  &  &  & &  \\ 
+ X_p^1 &  & \tilde{X}^1_u &  &    &  \\ 
+ \vdots &  &    & \ddots &    \\ 
+ X_p^{N-2} &    &  &  & \tilde{X}^{N-2}_u &  \\ 
+ X_p^{N-1} &    &  &  &  & \tilde{X}^{N-1}_u
+\end{array} \right].
+$$
+Dabei ist $\hat{S}_1$ eine invertierbare Diagonalmatrix. Algebraisch wird die Umsortierung der Spalten durch die Multiplikation von rechts mit einer Permutationsmatrix $P$ realisiert. Es gilt also 
+$$S=\tilde{S}Q=\hat{S}P^\top Q=\left[\hat{S}_1 \vert \hat{S}_2 \right]P^\top Q.$$ Wir definieren dann die orthonormale Transformationsmatrix $T:=P^\top Q$.
+
+
+\subsection*{Schritt 3: QP Transformieren}
+
+Wir benutzen die in Schritt 2 erstellte Matrix um das QP zu transformieren. Dafür setzen wir $u=Tx$. Dann ist das QP äquivalent zu 
+
+\begin{align*}
+\underset{u}{max} \ \ 	& \frac{1}{2}	u^\top \hat{H} u+\hat{f}^\top u \\
+s.t. \ \ 				& \left[\hat{S}_1 \vert \hat{S}_2 \right]u=s \\
+						& \hat{Q} u =q \\
+						& b_l \leq T^\top u \leq b_u \\ 
+\end{align*}
+mit $\hat{H}=T H T^\top$, $\hat{f}=Tf$ und $\hat{Q}=QT^\top$.
+
+
+\subsection*{Schritt 4:Condensing}
+
+Um die Anzahl der Variablen zu reduzieren nutzen wir aus, dass die Matrix $\hat{S}_1$ invertierbar ist und diagonalstruktur hat. Sei $u=[v^\top w^\top]^\top$, so dass $$\left[\hat{S}_1 \vert \hat{S}_2 \right]u=\hat{S}_1v+\hat{S}_2w$$ gilt. Da $\hat{S}_1$ invertierbar ist folgt daraus, dass $$v=\underbrace{\hat{S}^{-1}_1s}_{:=s’}-\underbrace{\hat{S}^{-1}_1\hat{S}_2}_{:=S'} w$$ gilt. Substituieren wir $v$ in dem QP, so erhalten wir folgendens QP:
+
+\begin{align*}
+w^\star=\underset{w}{max} \ \ 	& \frac{1}{2}	w^\top \left(S'^\top H_{11}S'-H_{12}^\top S'-S'^\top H_{12}+H_{22}\right) w \\
+						&+\left(H_{12}^\top s'-S'^\top H_{11}s'-S'^\top f1+f2\right)^\top w \\
+s.t. \ \					& \left(Q_2-Q_1S' \right)w =q-Q_1s' \\
+						& b_l-T^\top \left( \begin{array}{c} s' \\ 0	\end{array}\right)  						\leq T^\top \left( \begin{array}{c} -S' \\ I	\end{array}	 \right)w
+						\leq b_u-T^\top \left( \begin{array}{c} s' \\ 0	\end{array}	\right), 
+\end{align*}
+
+wobei $\hat{H}=\left[ \begin{array}{cc} H_{11}&H_{12}\\ H_{12}^\top & H_{22}\end{array} \right]$, $\hat{f}=\left[ \begin{array}{c} f_1 \\ f_2\end{array} \right]$ und $\hat{Q}= [Q_1 \ Q_2]$.
+
+\section{Rücktransformation}
+
+Mit der Annahme, dass die Matrix $H$ positiv definit ist und somit die Lösung der QPs eindeutig ist, gilt: $$x^\star=T^\top \left[\begin{array}{c} s'-S' \\ I \end{array}\right] w^\star$$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+****************Platzhalter********************************
 
 und somit ist :
 
-$$S=\left[\begin{array}{cccccccc}
-X_p^0 & R_0 & 0 & 0 &  &  &  &  \\ 
-X_p^1 & \tilde{X_s^0} & \tilde{X_u^0} & \tilde{X_s^1} & X_u ^1  & -I &  &  \\ 
-\vdots &  &  &  & \ddots & \ddots & \ddots &  \\ 
-X_p^{n_{dis}-1} &  &  &  &  & X_s^{n_{dis}-1} & X_u^{n_{dis}-1} & -I
-\end{array}  \right] \left[\begin{array}{cccc}
-Q_0 &  &  &  \\ 
- & I &  &  \\ 
- &  & \ddots &  \\ 
- &  &  & I
+$$S=S_1 \left[\begin{array}{ccccc}
+I & & & & \\
+ &Q_0 &  &  &  \\ 
+ & & I &  &  \\ 
+ & &  & \ddots &  \\ 
+ & &  &  & I
 \end{array}  \right]$$
+
+mit 
+$$S_1=\left[\begin{array}{cccccccc}
+X_p^0 & R_0 & 0 & 0 &  &  &  &  \\ 
+X_p^1 & \tilde{X}_s^0 & \tilde{X}_u^0 & \hat{X}_s^1 & X_u ^1  & -I &  &  \\ 
+\vdots &  &  &  & \ddots & \ddots & \ddots &  \\ 
+X_p^{N-1} &  &  &  &  & X_s^{N-1} & X_u^{N-1} & -I
+\end{array}  \right]$$
+
+
+für eine obere Dreiecksmatrix $R_1$ und eine orthonormale Matrix $Q_1$. Somit ist 
+$$S_1=S_2
+\left[\begin{array}{ccccc}
+I & & & & \\
+ &I &  &  &  \\ 
+ & & Q_1 &  &  \\ 
+ & &  & \ddots &  \\ 
+ & &  &  & I
+\end{array}  \right]$$ mit
+$$S_2=\left[\begin{array}{cccccccccc}
+X_p^0 & R_0 &  &  &  &  &  &  \\ 
+X_p^1 & \tilde{X}_s^0 & \tilde{X}_u^0 & R_1 &  &  &  &  \\ 
+X_p^2  & &  & \tilde{X}_s^1 & \tilde{X}_u^1 & \hat{X}_s^2 & X_u^2& -I  \\ 
+\vdots &  &  & & & & \ddots & \ddots & \ddots &  \\ 
+X_p^{N-1} &  &  & & & &  & X_s^{N-1} & X_u^{N-1} & -I
+\end{array} \right].$$
+
+Dieser Prozess wird iterativ wiederholt, bis wir eine Faktorisierung $$S=\tilde{S}Q$$ erhalten, wobei 
+
+$$\tilde{S}= \left[
+\begin{array}{cccccccc}
+X_p^0 & R_0 &  &  &  &  &  &  \\ 
+X_p^1 & \tilde{X}_s^0 & \tilde{X}_u^0 & R_1 &  &  &  &  \\ 
+X_p^2 &  &  & \tilde{X}_s^1 & \tilde{X}_u^1 & R_2 &  &  \\ 
+\vdots &  &  &  & \ddots & \ddots & \ddots &  \\ 
+x_p^{N-1} &  &  &  &  & R_{N-1} & 0 & 0
+\end{array}  \right]$$
+und 
+$$ Q=
+\left[\begin{array}{ccccc}
+I & & & & \\
+ &I &  &  &  \\ 
+ & & I &  &  \\ 
+ & &  & \ddots &  \\ 
+ & &  &  & Q_{N-1}
+\end{array} \right]
+\hdots
+\left[\begin{array}{ccccc}
+I & & & & \\
+ &I &  &  &  \\ 
+ & & Q_1 &  &  \\ 
+ & &  & \ddots &  \\ 
+ & &  &  & I
+\end{array}\right]
+\left[\begin{array}{ccccc}
+I & & & & \\
+ &Q_0 &  &  &  \\ 
+ & & I &  &  \\ 
+ & &  & \ddots &  \\ 
+ & &  &  & I
+\end{array} \right]
+$$ ist.
