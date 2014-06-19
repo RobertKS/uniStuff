@@ -1,5 +1,5 @@
 \section{Einleitung}
-Das Multiple Shooting Verfahren in Kombination mit sequentieller quadratische Programmierung (SQP) ist eine gängige Methode zur Lösung von Optimale Steuerungs Problemen (OCP).Die resultierenden quadratischen Subprobleme sind in der Regel dünn besetzt und habe eine charackteristische Struktur. Sogenannte Condensing Algorithmen verringern den Rechenaufwand, indem sie diese Struktur ausnutzen. Dabei wird das ursprüngliche dünnbesetzte QP in ein dichtbesetztes QP mit kleinerer Dimension transformiert. Die klassischen Ansätze bringen jedoch numerische Schwierigkeiten mit sich, wenn das Problem schlecht konditioniert ist. In diesem Bericht stellen wir einen Condensing Algorithmus vor, der auf QR-Faktorisierung beruht. Da nur mit orthogonalen Matrizen gearbeitet wird zeichnet dieser Ansatz sich durch numerische Stabiltät aus.
+Das Multiple Shooting Verfahren in Kombination mit sequentieller quadratische Programmierung (SQP) ist eine gängige Methode zur Lösung von Optimale Steuerung Problemen (OCP).Die resultierenden quadratischen Subprobleme sind in der Regel dünn besetzt und habe eine charackteristische Struktur. Sogenannte Condensing Algorithmen verringern den Rechenaufwand, indem sie diese Struktur ausnutzen. Dabei wird das ursprüngliche dünnbesetzte QP in ein dicht besetztes QP mit kleinerer Dimension transformiert. Die klassischen Ansätze bringen jedoch numerische Schwierigkeiten mit sich, wenn das Problem schlecht konditioniert ist. In diesem Bericht stellen wir einen Condensing Algorithmus vor, der auf QR-Faktorisierung beruht. Da nur mit orthogonalen Matrizen gearbeitet wird zeichnet dieser Ansatz sich durch numerische Stabilität aus.
 
 Wir behandeln quadratische Programme mit der folgenden Strukur. Dabei gibt $n_u$ die Anzahl der Steuerung, $n_s$ die Anzahl der Zustande, $n_p$ die Anzahl der Parameter und $N$ die Anzahl der Shootinginknoten an. Es ist also $u_i \in \mathbb{R}^{n_u}$ und $s_i \in \mathbb{R}^{n_s}$ für $i=0, \hdots, N$ sowie $p \in \mathbb{R}^{n_p}$. Um die Darstellung einfach zu halten gehen wir davon aus, dass die gekoppelten sowie die ungekoppelten Nebenbedingungen mit Gleichheit erfüllt sein müssen. Der Ansatz lässt sich jedoch direkt auf Ungleichungsnebenbedingungen erweitern.
 
@@ -93,9 +93,11 @@ s^{N}_u \\
 u^{N}_u
 \end{array} \right].$$
 
-\subsection{ Iterative QR-Faktorrisierung und Variabelentransformation} 
+\subsection{Klassischer Ansatz}
 
-Jede Blockzeile der Matrix $S$ hat vollen Zeilenrang.  Also liefert die Bedingung $Sx=s$ eine eindeutige Abhängigkeit der Variablen. Condensing Algorithmen nutzen die Struktur der Matrix $S$ aus um die Anzahl der Variablen über diese Abhängigkeit zu eleminieren. 
+
+
+Jede Blockzeile der Matrix $S$ hat vollen Zeilenrang.  Also liefert die Bedingung $Sx=s$ eine eindeutige Abhängigkeit der Variablen. Condensing Algorithmen nutzen die Struktur der Matrix $S$ aus um die Anzahl der Variablen über diese Abhängigkeit zu eliminieren. 
 
 Bei dem klassischen Ansatz wird $Sx=s$ so umsortiert, dass 
 $$\left[\begin{array}{cccc}
@@ -125,7 +127,9 @@ u_{N-1}
 \end{array}\right]$$ 
 gilt. Dieses Gleichungssystem ist in Abhängigkeit von $(p,s_0,u_0,\hdots, u_{N-1})$ eindeutig lösbar.
 
-Sind die Matrizen $X_s^i$ für $i=0,...,N-1$ jedoch schlecht konditioniert, treten bei Lösung numerische Schwierigkeiten auf.
+Der Nachteil dieses Ansatzes wird deutlich, wenn die Matrizen $X_s^i$ für $i=0,...,N-1$ schlecht konditioniert sind. Da bei der Lösung des Gleichungssystem die Matrizen $X_s^i$ auf multipliziert werden, treten bei Lösung numerische Schwierigkeiten auf.
+
+\subsection{ Iterative QR-Faktorrisierung und Variablentransformation} 
 Um dies auf eine numerisch stabile Weise zu machen, nehmen wir eine orthogonale Variablentransformation vor. Dazu betrachten die einzelnen Matchingblöcke und berechnen eine entsprechende QR-Zerlegung. 
 
 Sei $Q_0$ und $R_0$ die QR-Zerlegung des Blockes $[X_s^0 X_u^0 -I]$, wobei $Q_0$ eine orthonormale Matrix der Dimension $n_u+2n_s$ ist und $R_0$ eine invertierbare untere Dreiecksmatrix mit der Dimension $n_s$ ist.
@@ -143,7 +147,7 @@ R_0 & 0 & 0 \\
 \end{array}\right]Q_0$$
 
 
-Diese Faktoriesierung wiederholen wir iterativ für alle Blockzeilen. Für $i=2,\hdots,N-1$ sind die Matrizen $R_i$ und $Q_i$ rekursiv so gewählt, dass
+Diese Faktorriesierung wiederholen wir iterativ für alle Blockzeilen. Für $i=2,\hdots,N-1$ sind die Matrizen $R_i$ und $Q_i$ rekursiv so gewählt, dass
 $$\left[ \begin{array}{ccc}
 \hat{X}_s^i &  X_u^i & -I \\ 
 0 & 0 & X_s^{i+1}
@@ -222,7 +226,7 @@ mit $\hat{H}=T H T^\top$, $\hat{f}=Tf$ und $\hat{Q}=QT^\top$.
 
 \subsection{Condensing}
 
-Um die Anzahl der Variablen zu reduzieren nutzen wir aus, dass die Matrix $\hat{S}_1$ invertierbar ist und diagonalstruktur hat. Sei $u=[v^\top w^\top]^\top$, so dass $$\left[\hat{S}_1 \vert \hat{S}_2 \right]u=\hat{S}_1v+\hat{S}_2w$$ gilt. Da $\hat{S}_1$ invertierbar ist folgt daraus, dass $$v=\underbrace{\hat{S}^{-1}_1s}_{:=s’}-\underbrace{\hat{S}^{-1}_1\hat{S}_2}_{:=S'} w$$ gilt. Substituieren wir $v$ in dem QP \ref{qp:trans}, so erhalten wir folgendens QP:
+Um die Anzahl der Variablen zu reduzieren nutzen wir aus, dass die Matrix $\hat{S}_1$ invertierbar ist und diagonalstruktur hat. Sei $u=[v^\top w^\top]^\top$, so dass $$\left[\hat{S}_1 \vert \hat{S}_2 \right]u=\hat{S}_1v+\hat{S}_2w$$ gilt. Da $\hat{S}_1$ invertierbar ist folgt daraus, dass $$v=\underbrace{\hat{S}^{-1}_1s}_{:=s’}-\underbrace{\hat{S}^{-1}_1\hat{S}_2}_{:=S'} w$$ gilt. Substituieren wir $v$ in dem QP \ref{qp:trans}, so erhalten wir folgendes QP:
 
 \begin{align} \label{qp:cond}
 w^\star=\underset{w}{max} \ \ 	& \frac{1}{2}	w^\top \left(S'^\top H_{11}S'-H_{12}^\top S'-S'^\top H_{12}+H_{22}\right) w \\
