@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-1.40.10 (TeX Live 2009/Debian) (format=pdflatex 2013.10.21)  14 JUN 2014 17:34
+This is pdfTeX, Version 3.1415926-1.40.10 (TeX Live 2009/Debian) (format=pdflatex 2013.10.21)  18 JUN 2014 15:00
 entering extended mode
  %&-line parsing enabled.
 **qrDoc.tex
@@ -415,47 +415,52 @@ driver: pdftex
 (1in=72.27pt, 1cm=28.45pt)
 -----------------------
 (./inhalt.tex
-Overfull \hbox (4.56946pt too wide) in paragraph at lines 2--3
-[]\OT1/cmr/m/n/10 Bei der L^^?osung von Op-ti-male Steu-rungs Prob-le-men (OCP)
- mit SQP-Verfahren tauchen quadratis-
+Overfull \hbox (2.79282pt too wide) in paragraph at lines 2--3
+[]\OT1/cmr/m/n/10 Das Mul-ti-ple Shoot-ing Ver-fahren in Kom-bi-na-tion mit se-
+quen-tieller quadratis-che Pro-gram-mierung
  []
 
-[1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}]
-Overfull \hbox (50.63733pt too wide) in paragraph at lines 26--27
- \OT1/cmr/bx/n/10 Schritt 1: Anord-nung der einzel-nen Ma-trizen.[] \OT1/cmr/m/
-n/10 Zun^^?achst definieren wir $\OML/cmm/m/it/10 x \OT1/cmr/m/n/10 = (\OML/cmm
-/m/it/10 p; s[]; u[]; s[]; u[]; [] ; s[]; u[]\OT1/cmr/m/n/10 )$.
+[1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] [2]
+Overfull \hbox (8.83774pt too wide) in paragraph at lines 155--156
+\OT1/cmr/m/n/10 gilt. Sei $[]$ die or-thonor-male Ma-trix, die die entsprechend
+e Spal-tenop-er-a-tion auf ganz $\OML/cmm/m/it/10 S$ \OT1/cmr/m/n/10 repr^^?ase
+ntiert.
  []
 
-[2] [3]
 
-LaTeX Warning: Command \textquoteright invalid in math mode on input line 198.
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
-[4]) [5] (./qrDoc.aux) ) 
+ [3]
+[4]
+
+LaTeX Warning: Command \textquoteright invalid in math mode on input line 225.
+
+) [5] (./qrDoc.aux) ) 
 Here is how much of TeX's memory you used:
- 2018 strings out of 495021
- 23110 string characters out of 1181034
- 93868 words of memory out of 3000000
- 5059 multiletter control sequences out of 15000+50000
+ 2021 strings out of 495021
+ 23137 string characters out of 1181034
+ 93894 words of memory out of 3000000
+ 5062 multiletter control sequences out of 15000+50000
  9869 words of font info for 39 fonts, out of 3000000 for 9000
  189 hyphenation exceptions out of 8191
- 34i,23n,31p,581b,208s stack positions out of 5000i,500n,10000p,200000b,50000s
-</usr/share/texmf-texlive/fonts/type1/public/amsfonts/c
-m/cmbx10.pfb></usr/share/texmf-texlive/fonts/type1/public/amsfonts/cm/cmcsc10.p
-fb></usr/share/texmf-texlive/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/sh
-are/texmf-texlive/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texmf-t
-exlive/fonts/type1/public/amsfonts/cm/cmmi5.pfb></usr/share/texmf-texlive/fonts
-/type1/public/amsfonts/cm/cmmi7.pfb></usr/share/texmf-texlive/fonts/type1/publi
-c/amsfonts/cm/cmr10.pfb></usr/share/texmf-texlive/fonts/type1/public/amsfonts/c
-m/cmr7.pfb></usr/share/texmf-texlive/fonts/type1/public/amsfonts/cm/cmr8.pfb></
-usr/share/texmf-texlive/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/t
-exmf-texlive/fonts/type1/public/amsfonts/cm/cmsy5.pfb></usr/share/texmf-texlive
-/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/share/texmf-texlive/fonts/type1
-/public/amsfonts/cm/cmti8.pfb></usr/share/texmf-texlive/fonts/type1/public/amsf
-onts/cm/cmtt8.pfb>
-Output written on qrDoc.pdf (5 pages, 184299 bytes).
+ 34i,23n,31p,873b,208s stack positions out of 5000i,500n,10000p,200000b,50000s
+</usr/share/texmf-texlive/fonts/type1/public/amsfonts/cm/c
+mbx10.pfb></usr/share/texmf-texlive/fonts/type1/public/amsfonts/cm/cmcsc10.pfb>
+</usr/share/texmf-texlive/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share
+/texmf-texlive/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texmf-texl
+ive/fonts/type1/public/amsfonts/cm/cmmi5.pfb></usr/share/texmf-texlive/fonts/ty
+pe1/public/amsfonts/cm/cmmi7.pfb></usr/share/texmf-texlive/fonts/type1/public/a
+msfonts/cm/cmr10.pfb></usr/share/texmf-texlive/fonts/type1/public/amsfonts/cm/c
+mr7.pfb></usr/share/texmf-texlive/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr
+/share/texmf-texlive/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texm
+f-texlive/fonts/type1/public/amsfonts/cm/cmsy5.pfb></usr/share/texmf-texlive/fo
+nts/type1/public/amsfonts/cm/cmsy7.pfb></usr/share/texmf-texlive/fonts/type1/pu
+blic/amsfonts/cm/cmti8.pfb></usr/share/texmf-texlive/fonts/type1/public/amsfont
+s/cm/cmtt8.pfb></usr/share/texmf-texlive/fonts/type1/public/amsfonts/symbols/ms
+bm10.pfb>
+Output written on qrDoc.pdf (5 pages, 179566 bytes).
 PDF statistics:
- 74 PDF objects out of 1000 (max. 8388607)
+ 78 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
  1 words of extra memory for PDF output out of 10000 (max. 10000000)
 

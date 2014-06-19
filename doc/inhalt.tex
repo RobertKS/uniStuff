@@ -1,7 +1,7 @@
 \section{Einleitung}
-Bei der Lösung von Optimale Steurungs Problemen (OCP) mit SQP-Verfahren tauchen quadratische Programme (QP)  mit einer typischen Struktur auf. Durch die Ausnutzung dieser Struktur lässt sich die Geschwindigkeit der Verfahren stark erhöhen. Dabei wird das ursprüngliche dünnbesetzte QP in ein dichtbesetztes QP mit kleinerer Dimension transformiert. In diesem Bericht stellen wir einen Ansatz vor, der auf QR-Faktorisierung beruht. Da nur mit orthogonalen Matrizen gearbeitet wird zeichnet dieser Ansatz sich durch numerische Stabiltät aus.
+Das Multiple Shooting Verfahren in Kombination mit sequentieller quadratische Programmierung (SQP) ist eine gängige Methode zur Lösung von Optimale Steuerungs Problemen (OCP).Die resultierenden quadratischen Subprobleme sind in der Regel dünn besetzt und habe eine charackteristische Struktur. Sogenannte Condensing Algorithmen verringern den Rechenaufwand, indem sie diese Struktur ausnutzen. Dabei wird das ursprüngliche dünnbesetzte QP in ein dichtbesetztes QP mit kleinerer Dimension transformiert. Die klassischen Ansätze bringen jedoch numerische Schwierigkeiten mit sich, wenn das Problem schlecht konditioniert ist. In diesem Bericht stellen wir einen Condensing Algorithmus vor, der auf QR-Faktorisierung beruht. Da nur mit orthogonalen Matrizen gearbeitet wird zeichnet dieser Ansatz sich durch numerische Stabiltät aus.
 
-Wir behandeln quadratische Programme mit der folgenden Strukur. Dabei gibt $n_u$ die Anzahl der Steuerung, $n_s$ die Anzahl der Zustande und $N$ die Anzahl der Shootingintervalle an. Um die Darstellung einfach zu halten gehen wir davon aus, dass die gekoppelten sowie die ungekoppelten Nebenbedingungen mit Gleichheit erfüllt sein müssen. Der Ansatz lässt sich jedoch problemlos auch auf Ungleichungsnebenbedingungen erweitern.
+Wir behandeln quadratische Programme mit der folgenden Strukur. Dabei gibt $n_u$ die Anzahl der Steuerung, $n_s$ die Anzahl der Zustande, $n_p$ die Anzahl der Parameter und $N$ die Anzahl der Shootinginknoten an. Es ist also $u_i \in \mathbb{R}^{n_u}$ und $s_i \in \mathbb{R}^{n_s}$ für $i=0, \hdots, N$ sowie $p \in \mathbb{R}^{n_p}$. Um die Darstellung einfach zu halten gehen wir davon aus, dass die gekoppelten sowie die ungekoppelten Nebenbedingungen mit Gleichheit erfüllt sein müssen. Der Ansatz lässt sich jedoch direkt auf Ungleichungsnebenbedingungen erweitern.
 
 \begin{align*}
 \underset{u,s,p}{min}\ \	&p^\top B_{pp} p+f_p^\top p  \\ 
@@ -16,21 +16,20 @@ s.t. 	\ \				&s_{i+1}=X_p^i p +X_s^i s_i + X_u^i u_i -X_c^i  		&& i=1,\hdots,N-1
 						& u_l^i \leq u_i  \leq u_u^i  && i=1,\hdots,N
 \end{align*}
 
-Die Beschreibung des Algorithmus in diesem Bericht orientiert sich an der dazu gehörigen Matlab Implementierung. Dabei wurde der Programmcode nicht auf Geschwindigkeit optimiert. Stattdessen ist der Fokus auf der Übersichtlich und der Nachvollziehbarkeit.
+
 \section{Der Algorithmus}
 
-Analog zu der Implementierung werden wir den Algorithmus in vier Schritten darstellen.
 
-\subsection*{Schritt 1: Anordnung der einzelnen Matrizen}
+\subsection{Anordnung der einzelnen Matrizen}
 
-Zunächst definieren wir $x=(p,s_0,u_0,s_1,u_1,\hdots,s_{N},u_{N})$. Somit können wir das QP auch schreiben als:
+Um die Notation einfach zu halten, fassen wir die Zielfunktion und Nebenbedingungen in einzelne Matrizen zusammen. Dabei bleibt die Struktur erhalten. Wir definieren $x \in \mathbb{R}^{n_p+N(n_u+n_s)}$ mit $x=(p,s_0,u_0,s_1,u_1,\hdots,s_{N},u_{N})$. Somit können wir das QP auch schreiben als:
 
-\begin{align*}
-x^\star=\underset{x}{max} \ \ 	& \frac{1}{2}	x^\top H x+f^\top x \\
-s.t. \ \ 				& Sx=s \\
-						& Qx=q \\
-						& b_l \leq x \leq b_u \\ 
-\end{align*}
+\begin{align} \label{qp:std}
+x^\star=\underset{x}{min} \ \ 	& \frac{1}{2}	x^\top H x+f^\top x \\
+s.t. \ \ 				& Sx=s \notag \\
+						& Qx=q \notag \\
+						& b_l \leq x \leq b_u. \notag 
+\end{align}
 
 Dabei ist $$H= \left[ \begin{array}{cccccc}
 B_{pp} & B_{ps}^1 & B_{pu}^1 & \hdots & B_{ps}^{N} & B_{pu}^{N} \\ 
@@ -47,7 +46,7 @@ f_u^1 \\
 \vdots \\ 
 f_s^{N} \\ 
 f_u^{N}
-\end{array}  \right]$$
+\end{array}  \right],$$
 
 $$S=\left[\begin{array}{cccccccc}
 X_p^0 & X_s^0 & X_u^0 & - I &  &  &  &  \\ 
@@ -60,7 +59,7 @@ X_c^ 0 \\
 X_c^1 \\ 
 \hdots \\ 
 X_c^{N-1}
-\end{array} \right] $$
+\end{array} \right], $$
 
 $$Q=\left[ \begin{array}{cccccccc}
 R_p^0 & R_s^0 & R_u^0 &  &  &  &  &  \\ 
@@ -75,7 +74,7 @@ R_c^1 \\
 \vdots \\ 
 R_c^{N} \\ 
 C_c
-\end{array}  \right]$$
+\end{array}  \right],$$
 
 $$u= \left[ \begin{array}{c}
 p_l \\ 
@@ -92,11 +91,42 @@ u^0_u \\
 \vdots \\ 
 s^{N}_u \\ 
 u^{N}_u
-\end{array} \right]$$
+\end{array} \right].$$
 
-\subsection*{Schritt 2: Iterative QR-Faktorrisierung und Variabelentransformation}
+\subsection{ Iterative QR-Faktorrisierung und Variabelentransformation} 
 
-Wir betrachten nun die einzelnen Matchingblöcke und berechnen eine entsprechende QR-Zerlegung. 
+Jede Blockzeile der Matrix $S$ hat vollen Zeilenrang.  Also liefert die Bedingung $Sx=s$ eine eindeutige Abhängigkeit der Variablen. Condensing Algorithmen nutzen die Struktur der Matrix $S$ aus um die Anzahl der Variablen über diese Abhängigkeit zu eleminieren. 
+
+Bei dem klassischen Ansatz wird $Sx=s$ so umsortiert, dass 
+$$\left[\begin{array}{cccc}
+-I &  &  &  \\ 
+X_s^0 & \ddots &  &  \\ 
+ & \ddots & -I &  \\ 
+ &  & X_s^{N-1} & -I
+\end{array} \right]\left[\begin{array}{c}
+s_1 \\ 
+\vdots \\ 
+s_{N-1} \\ 
+s_{N}
+\end{array}  \right]=s-
+\left[\begin{array}{cccccc}
+X_p^0 & X_s^0 & X_u^0 &  &  &  \\ 
+X_p^1 &  &  & X_u^1 &  &  \\ 
+\vdots &  &  &  & \ddots &  \\ 
+X_p^{N-1} &  &  &  &  & X_u^{N-1}
+\end{array} 
+\right]
+\left[\begin{array}{c}
+p \\
+s_ 0 \\
+u_0\\
+\vdots \\
+u_{N-1}
+\end{array}\right]$$ 
+gilt. Dieses Gleichungssystem ist in Abhängigkeit von $(p,s_0,u_0,\hdots, u_{N-1})$ eindeutig lösbar.
+
+Sind die Matrizen $X_s^i$ für $i=0,...,N-1$ jedoch schlecht konditioniert, treten bei Lösung numerische Schwierigkeiten auf.
+Um dies auf eine numerisch stabile Weise zu machen, nehmen wir eine orthogonale Variablentransformation vor. Dazu betrachten die einzelnen Matchingblöcke und berechnen eine entsprechende QR-Zerlegung. 
 
 Sei $Q_0$ und $R_0$ die QR-Zerlegung des Blockes $[X_s^0 X_u^0 -I]$, wobei $Q_0$ eine orthonormale Matrix der Dimension $n_u+2n_s$ ist und $R_0$ eine invertierbare untere Dreiecksmatrix mit der Dimension $n_s$ ist.
 
@@ -113,7 +143,7 @@ R_0 & 0 & 0 \\
 \end{array}\right]Q_0$$
 
 
-Dieser Prozess wiederholen wir nun für alle folgenden Blockzeilen. Für $i=2,\hdots,N-1$ sind die Matrizen $R_i$ und $Q_i$ rekursiv so gewählt, dass
+Diese Faktoriesierung wiederholen wir iterativ für alle Blockzeilen. Für $i=2,\hdots,N-1$ sind die Matrizen $R_i$ und $Q_i$ rekursiv so gewählt, dass
 $$\left[ \begin{array}{ccc}
 \hat{X}_s^i &  X_u^i & -I \\ 
 0 & 0 & X_s^{i+1}
@@ -123,14 +153,14 @@ $$\left[ \begin{array}{ccc}
 R_i & 0 & 0 \\
 \tilde{X}^i_s & \tilde{X}^i_u & \hat{X}^{i+1}_s
 \end{array}\right]Q_i$$
-gilt. Sei $\tilde{Q}_i$ die orthonormale Matrix, die die entsprechende Spaltenoperation repräsentiert. Die Matrix hat also die Struktur $$\tilde{Q}_i=\left[\begin{array}{c|c|c}
+gilt. Sei $\tilde{Q}_i$ die orthonormale Matrix, die die entsprechende Spaltenoperation auf ganz $S$ repräsentiert. Die Matrix hat also die Struktur $$\tilde{Q}_i=\left[\begin{array}{c|c|c}
 I_{n_p+(i-1)(n_s+n_u)} & & \\
 \hline
 & Q_i & \\
 \hline
 &&I_{(N-i-2)(n_u+n_s)-n_s}\\
 \end{array}\right].$$
-Die Struktur der Matrix $S$ verändert sich also:
+Die orthonormale Variablentransformation ist also durch die Matrizen $\tilde{Q}_i$ gegeben. Somit können wir gilt für $S$:
 
 \begin{align*}
 S&=\left[\begin{array}{cccccccc}
@@ -138,14 +168,14 @@ X_p^0 & R_0 & 0 & 0 &  &  &  &  \\
 X_p^1 & \tilde{X}_s^0 & \tilde{X}_u^0 & \hat{X}_s^1 & X_u ^1  & -I &  &  \\ 
 \vdots &  &  &  & \ddots & \ddots & \ddots &  \\ 
 X_p^{N-1} &  &  &  &  & X_s^{N-1} & X_u^{N-1} & -I
-\end{array}  \right]Q_0 \\
+\end{array}  \right]\tilde{Q}_0 \\
 &=\left[\begin{array}{cccccccccc}
 X_p^0 & R_0 &  &  &  &  &  &  \\ 
 X_p^1 & \tilde{X}_s^0 & \tilde{X}_u^0 & R_1 &  &  &  &  \\ 
 X_p^2  & &  & \tilde{X}_s^1 & \tilde{X}_u^1 & \hat{X}_s^2 & X_u^2& -I  \\ 
 \vdots &  &  & & & & \ddots & \ddots & \ddots &  \\ 
 X_p^{N-1} &  &  & & & &  & X_s^{N-1} & X_u^{N-1} & -I
-\end{array} \right]Q_1Q_0\\
+\end{array} \right]\tilde{Q}_1\tilde{Q}_0\\
 &=\underbrace{\left[
 \begin{array}{cccccccc}
 X_p^0 & R_0 &  &  &  &  &  &  \\ 
@@ -154,7 +184,7 @@ X_p^2 &  &  & \tilde{X}_s^1 & \tilde{X}_u^1 & R_2 &  &  \\
 \vdots &  &  &  & \ddots & \ddots & \ddots &  \\ 
 x_p^{N-1} &  &  &  &  & R_{N-1} & 0 & 0
 \end{array}  \right]}_{:=\tilde{S}}
-\underbrace{Q_{N-1}\hdots Q_1Q_0}_{:=Q}.
+\underbrace{\tilde{Q}_{N-1}\hdots \tilde{Q}_1\tilde{Q}_0}_{:=Q}.
 \end{align*}
 
 
@@ -179,126 +209,27 @@ $$
 Dabei ist $\hat{S}_1$ eine invertierbare Diagonalmatrix. Algebraisch wird die Umsortierung der Spalten durch die Multiplikation von rechts mit einer Permutationsmatrix $P$ realisiert. Es gilt also 
 $$S=\tilde{S}Q=\hat{S}P^\top Q=\left[\hat{S}_1 \vert \hat{S}_2 \right]P^\top Q.$$ Wir definieren dann die orthonormale Transformationsmatrix $T:=P^\top Q$.
 
+Wir benutzen diese Matrix um das QP zu transformieren. Dafür setzen wir $u=Tx$. Dann ist das QP äquivalent zu 
 
-\subsection*{Schritt 3: QP Transformieren}
-
-Wir benutzen die in Schritt 2 erstellte Matrix um das QP zu transformieren. Dafür setzen wir $u=Tx$. Dann ist das QP äquivalent zu 
-
-\begin{align*}
+\begin{align} \label{qp:trans}
 \underset{u}{max} \ \ 	& \frac{1}{2}	u^\top \hat{H} u+\hat{f}^\top u \\
-s.t. \ \ 				& \left[\hat{S}_1 \vert \hat{S}_2 \right]u=s \\
-						& \hat{Q} u =q \\
-						& b_l \leq T^\top u \leq b_u \\ 
-\end{align*}
+s.t. \ \ 				& \left[\hat{S}_1 \vert \hat{S}_2 \right]u=s \notag \\
+						& \hat{Q} u =q \notag \\
+						& b_l \leq T^\top u \leq b_u  \notag
+\end{align}
 mit $\hat{H}=T H T^\top$, $\hat{f}=Tf$ und $\hat{Q}=QT^\top$.
 
 
-\subsection*{Schritt 4:Condensing}
+\subsection{Condensing}
 
-Um die Anzahl der Variablen zu reduzieren nutzen wir aus, dass die Matrix $\hat{S}_1$ invertierbar ist und diagonalstruktur hat. Sei $u=[v^\top w^\top]^\top$, so dass $$\left[\hat{S}_1 \vert \hat{S}_2 \right]u=\hat{S}_1v+\hat{S}_2w$$ gilt. Da $\hat{S}_1$ invertierbar ist folgt daraus, dass $$v=\underbrace{\hat{S}^{-1}_1s}_{:=s’}-\underbrace{\hat{S}^{-1}_1\hat{S}_2}_{:=S'} w$$ gilt. Substituieren wir $v$ in dem QP, so erhalten wir folgendens QP:
+Um die Anzahl der Variablen zu reduzieren nutzen wir aus, dass die Matrix $\hat{S}_1$ invertierbar ist und diagonalstruktur hat. Sei $u=[v^\top w^\top]^\top$, so dass $$\left[\hat{S}_1 \vert \hat{S}_2 \right]u=\hat{S}_1v+\hat{S}_2w$$ gilt. Da $\hat{S}_1$ invertierbar ist folgt daraus, dass $$v=\underbrace{\hat{S}^{-1}_1s}_{:=s’}-\underbrace{\hat{S}^{-1}_1\hat{S}_2}_{:=S'} w$$ gilt. Substituieren wir $v$ in dem QP \ref{qp:trans}, so erhalten wir folgendens QP:
 
-\begin{align*}
+\begin{align} \label{qp:cond}
 w^\star=\underset{w}{max} \ \ 	& \frac{1}{2}	w^\top \left(S'^\top H_{11}S'-H_{12}^\top S'-S'^\top H_{12}+H_{22}\right) w \\
-						&+\left(H_{12}^\top s'-S'^\top H_{11}s'-S'^\top f1+f2\right)^\top w \\
-s.t. \ \					& \left(Q_2-Q_1S' \right)w =q-Q_1s' \\
+						&+\left(H_{12}^\top s'-S'^\top H_{11}s'-S'^\top f1+f2\right)^\top w \notag \\
+s.t. \ \					& \left(Q_2-Q_1S' \right)w =q-Q_1s' \notag \\
 						& b_l-T^\top \left( \begin{array}{c} s' \\ 0	\end{array}\right)  						\leq T^\top \left( \begin{array}{c} -S' \\ I	\end{array}	 \right)w
-						\leq b_u-T^\top \left( \begin{array}{c} s' \\ 0	\end{array}	\right), 
-\end{align*}
+						\leq b_u-T^\top \left( \begin{array}{c} s' \\ 0	\end{array}	\right), \notag
+\end{align}
 
-wobei $\hat{H}=\left[ \begin{array}{cc} H_{11}&H_{12}\\ H_{12}^\top & H_{22}\end{array} \right]$, $\hat{f}=\left[ \begin{array}{c} f_1 \\ f_2\end{array} \right]$ und $\hat{Q}= [Q_1 \ Q_2]$.
-
-\section{Rücktransformation}
-
-Mit der Annahme, dass die Matrix $H$ positiv definit ist und somit die Lösung der QPs eindeutig ist, gilt: $$x^\star=T^\top \left[\begin{array}{c} s'-S' \\ I \end{array}\right] w^\star$$
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-****************Platzhalter********************************
-
-und somit ist :
-
-$$S=S_1 \left[\begin{array}{ccccc}
-I & & & & \\
- &Q_0 &  &  &  \\ 
- & & I &  &  \\ 
- & &  & \ddots &  \\ 
- & &  &  & I
-\end{array}  \right]$$
-
-mit 
-$$S_1=\left[\begin{array}{cccccccc}
-X_p^0 & R_0 & 0 & 0 &  &  &  &  \\ 
-X_p^1 & \tilde{X}_s^0 & \tilde{X}_u^0 & \hat{X}_s^1 & X_u ^1  & -I &  &  \\ 
-\vdots &  &  &  & \ddots & \ddots & \ddots &  \\ 
-X_p^{N-1} &  &  &  &  & X_s^{N-1} & X_u^{N-1} & -I
-\end{array}  \right]$$
-
-
-für eine obere Dreiecksmatrix $R_1$ und eine orthonormale Matrix $Q_1$. Somit ist 
-$$S_1=S_2
-\left[\begin{array}{ccccc}
-I & & & & \\
- &I &  &  &  \\ 
- & & Q_1 &  &  \\ 
- & &  & \ddots &  \\ 
- & &  &  & I
-\end{array}  \right]$$ mit
-$$S_2=\left[\begin{array}{cccccccccc}
-X_p^0 & R_0 &  &  &  &  &  &  \\ 
-X_p^1 & \tilde{X}_s^0 & \tilde{X}_u^0 & R_1 &  &  &  &  \\ 
-X_p^2  & &  & \tilde{X}_s^1 & \tilde{X}_u^1 & \hat{X}_s^2 & X_u^2& -I  \\ 
-\vdots &  &  & & & & \ddots & \ddots & \ddots &  \\ 
-X_p^{N-1} &  &  & & & &  & X_s^{N-1} & X_u^{N-1} & -I
-\end{array} \right].$$
-
-Dieser Prozess wird iterativ wiederholt, bis wir eine Faktorisierung $$S=\tilde{S}Q$$ erhalten, wobei 
-
-$$\tilde{S}= \left[
-\begin{array}{cccccccc}
-X_p^0 & R_0 &  &  &  &  &  &  \\ 
-X_p^1 & \tilde{X}_s^0 & \tilde{X}_u^0 & R_1 &  &  &  &  \\ 
-X_p^2 &  &  & \tilde{X}_s^1 & \tilde{X}_u^1 & R_2 &  &  \\ 
-\vdots &  &  &  & \ddots & \ddots & \ddots &  \\ 
-x_p^{N-1} &  &  &  &  & R_{N-1} & 0 & 0
-\end{array}  \right]$$
-und 
-$$ Q=
-\left[\begin{array}{ccccc}
-I & & & & \\
- &I &  &  &  \\ 
- & & I &  &  \\ 
- & &  & \ddots &  \\ 
- & &  &  & Q_{N-1}
-\end{array} \right]
-\hdots
-\left[\begin{array}{ccccc}
-I & & & & \\
- &I &  &  &  \\ 
- & & Q_1 &  &  \\ 
- & &  & \ddots &  \\ 
- & &  &  & I
-\end{array}\right]
-\left[\begin{array}{ccccc}
-I & & & & \\
- &Q_0 &  &  &  \\ 
- & & I &  &  \\ 
- & &  & \ddots &  \\ 
- & &  &  & I
-\end{array} \right]
-$$ ist.
+wobei $\hat{H}=\left[ \begin{array}{cc} H_{11}&H_{12}\\ H_{12}^\top & H_{22}\end{array} \right]$, $\hat{f}=\left[ \begin{array}{c} f_1 \\ f_2\end{array} \right]$ und $\hat{Q}= [Q_1 \ Q_2]$. Es gilt $w \in \mathbb{R}^{n_p+n_s+Nn_u}$. Das QP \ref{qp:cond} hat also eine deutlich kleinere Dimension als \ref{qp:std}. Dabei haben wir nur äquivalente Umformungen vorgenommen. Für jeden kritischen Punkt $w$ von dem QP \ref{qp:cond} erhalten wir also einen kritischen Punkt $$x=T^\top \left[\begin{array}{c} s'-S' \\ I \end{array}\right] w$$ von dem ursprünglichen QP \ref{qp:std}. Mit der Annahme, dass die Matrix $H$ positiv definit ist und somit die Lösung der QPs eindeutig ist, gilt: $$x^\star=T^\top \left[\begin{array}{c} s'-S' \\ I \end{array}\right] w^\star.$$
